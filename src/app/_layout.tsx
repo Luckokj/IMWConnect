@@ -1,0 +1,19 @@
+import React from 'react';
+import { SafeAreaView, StyleSheet } from 'react-native';
+import { Slot } from 'expo-router';
+
+// Root layout required by expo-router. It must render a Slot (or a navigator)
+// on the first render so routing is considered "ready".
+export default function RootLayout() {
+  return (
+    <SafeAreaView style={styles.container}>
+      <Slot />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
