@@ -27,7 +27,8 @@ const estilo = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     height: 48,
-    width: '92%',
+    // make button fill the card width by default; callers can override via style prop
+    width: '100%',
     borderRadius: 12,
     marginVertical: 16,
     alignSelf: 'center',

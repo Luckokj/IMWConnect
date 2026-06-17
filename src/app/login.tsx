@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useContext} from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,32 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Logo from '../components/Logo';
 import Botao from '../components/Botao';
 import estilos from '../styles/styles';
+import AuthContext from '../firebase/authContext';
 
 export default function login() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const { login } = useContext(AuthContext);
+  const [emailOrNome, setEmailOrNome] = useState('');
   const [senha, setSenha] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin() {
+    try {
+      setLoading(true);
+      await login({ emailOrNome, senha });
+      router.replace('/home');
+    } catch (err) {
+      Alert.alert('Erro', err.message || String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <KeyboardAvoidingView
@@ -26,10 +42,10 @@ export default function login() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={{flexGrow: 1}} keyboardShouldPersistTaps="handled">
-        <SafeAreaView style={estilos.container}>
-          <Logo titulo="CONNECT" subtitulo="IMW OUTEIRO SANTO" />
+          <SafeAreaView style={estilos.container}>
+           <Logo titulo="CONNECT" subtitulo="IMW OUTEIRO SANTO" />
 
-          <View style={estilos.card}>
+           <View style={[estilos.card, {alignSelf: 'center'}]}>
             <View style={estilos.inputContainer}>
               <Image
                 style={estilos.iconeEmail}
@@ -37,11 +53,10 @@ export default function login() {
               />
               <TextInput
                 style={estilos.input}
-                placeholder="Digite seu email"
+                placeholder="Email ou nome"
                 placeholderTextColor="#6b8fa0"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
+                value={emailOrNome}
+                onChangeText={setEmailOrNome}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
@@ -66,7 +81,7 @@ export default function login() {
               <Text style={estilos.forgotText}>Esqueceu a senha?</Text>
             </TouchableOpacity>
 
-            <Botao titulo="Entrar" onPress={() => router.replace('/home')} />
+            <Botao titulo={loading ? 'Entrando...' : 'Entrar'} onPress={handleLogin} disabled={loading} />
 
             <View style={estilos.textoContainer}>
               <Text style={estilos.bottomText}>Não tem uma conta?</Text>

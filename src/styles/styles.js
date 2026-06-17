@@ -67,7 +67,8 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     marginVertical: 8,
     height: 52,
-    width: '92%',
+    // Make input container fill the card width so on small screens inputs are wider
+    width: '100%',
     borderRadius: 12,
     paddingHorizontal: 12,
   },
@@ -96,6 +97,8 @@ const estilos = StyleSheet.create({
   },
 
   card: {
+    // keep a small horizontal margin on the screen; card contents (inputs, button)
+    // will use full width of the card so they appear wider on mobile
     width: '92%',
     backgroundColor: COLORS.white,
     borderRadius: 14,
