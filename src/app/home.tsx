@@ -1,10 +1,10 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, FlatList, Image, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, FlatList, Image, Modal, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import estilos from '../styles/styles';
 import { useRouter } from 'expo-router';
 import AuthContext from '../firebase/authContext';
 import * as ImagePicker from 'expo-image-picker';
-import { getPosts, addPost } from '../firebase/service';
+import { getPosts, addPost, deletePost } from '../firebase/service';
 
 export default function Home() {
   const router = useRouter();
@@ -38,6 +38,10 @@ export default function Home() {
         Alert.alert('Apenas admin pode postar');
         return;
       }
+      if (!title || !title.trim() || !text || !text.trim()) {
+        Alert.alert('Erro', 'Título e texto são obrigatórios');
+        return;
+      }
       setUploading(true);
       // prefer localImageUri (picked from device), otherwise imageUrl (remote link)
       await addPost({ title, text, imageUri: localImageUri, imageUrl, authorId: user.id, authorName: user.nome });
@@ -66,23 +70,38 @@ export default function Home() {
   }
 
   function renderItem({ item }) {
+    // support both English and Portuguese field names that might exist in the DB
+    const title = item.title || item.titulo || '';
+    const body = item.text || item.texto || '';
+
     return (
-      <View style={{backgroundColor: '#fff', padding: 12, borderRadius: 10, marginVertical: 8}}>
-        {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={{ height: 160, borderRadius: 8, marginBottom: 8 }} /> : null}
-        <Text style={{fontWeight: '700', fontSize: 16}}>{item.title}</Text>
-        <Text style={{color: '#333', marginTop: 6}}>{item.text}</Text>
-        <Text style={{color: '#666', marginTop: 8, fontSize: 12}}>Por: {item.authorName}</Text>
+      // make each feed card fill the parent width so title/text aren't squashed
+      <View style={{backgroundColor: '#fff', padding: 12, borderRadius: 10, marginVertical: 8, width: '100%', minHeight: 120}}>
+        {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: 200, borderRadius: 8, marginBottom: 8 }} /> : null}
+        <Text style={{fontWeight: '700', fontSize: 18, color: '#000'}}>{title || '(sem título)'}</Text>
+        <Text style={{color: '#333', marginTop: 8}}>{body || '(sem texto)'}</Text>
+        <Text style={{color: '#666', marginTop: 10, fontSize: 12}}>Por: {item.authorName || item.author || 'Autor'}</Text>
+        {user && user.isAdmin ? (
+          <TouchableOpacity onPress={() => {
+            Alert.alert('Confirmar', 'Deseja excluir esta postagem?', [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Excluir', style: 'destructive', onPress: async () => { try { await deletePost(item.id); await load(); } catch (err) { Alert.alert('Erro', err.message || String(err)); } } },
+            ]);
+          }} style={{marginTop: 8}}>
+            <Text style={{color: '#c62828', fontWeight: '700'}}>Excluir</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     );
   }
 
   return (
     <SafeAreaView style={estilos.container}>
-      <View style={{width: '92%'}}>
+      <View style={{width: '100%', alignItems: 'center'}}>
         <Text style={{fontSize: 20, fontWeight: '700', marginVertical: 12}}>Feed</Text>
 
         {user && user.isAdmin ? (
-          <TouchableOpacity onPress={() => setModalVisible(true)} style={{marginBottom: 12}}>
+          <TouchableOpacity onPress={() => { console.log('opening modal'); setModalVisible(true); }} style={{marginBottom: 12}}>
             <Text style={{color: '#1C6885', fontWeight: '600'}}>Adicionar postagem</Text>
           </TouchableOpacity>
         ) : null}
@@ -93,6 +112,8 @@ export default function Home() {
           renderItem={renderItem}
           refreshing={loading}
           onRefresh={load}
+          style={{ width: '100%' }}
+          contentContainerStyle={{ paddingBottom: 40, paddingTop: 4, alignItems: 'center' }}
         />
 
         <TouchableOpacity onPress={() => { logout(); router.replace('/login'); }} style={{marginTop: 12}}>
@@ -100,20 +121,44 @@ export default function Home() {
         </TouchableOpacity>
 
         <Modal visible={modalVisible} animationType="slide">
-          <SafeAreaView style={estilos.container}>
-            <View style={estilos.card}>
-              <Text style={{fontWeight: '700', fontSize: 18, marginBottom: 8}}>Nova postagem</Text>
-              <TextInput placeholder="Título" style={estilos.input} value={title} onChangeText={setTitle} />
-              <TextInput placeholder="Texto" style={[estilos.input, {height: 120, textAlignVertical: 'top'}]} multiline value={text} onChangeText={setText} />
-              <View style={{width: '100%'}}>
-                <TouchableOpacity onPress={pickImage} style={{backgroundColor: '#e6f6f8', padding: 10, borderRadius: 8, marginBottom: 8}}>
-                  <Text style={{color: '#1C6885', textAlign: 'center'}}>Selecionar imagem do dispositivo</Text>
-                </TouchableOpacity>
-                {localImageUri ? (
-                  <Image source={{ uri: localImageUri }} style={{ width: '100%', height: 180, borderRadius: 8, marginBottom: 8 }} />
-                ) : null}
-                <Text style={{textAlign: 'center', marginBottom: 8}}>ou</Text>
-                <TextInput placeholder="URL da imagem (opcional)" style={estilos.input} value={imageUrl} onChangeText={setImageUrl} autoCapitalize='none' />
+          <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <SafeAreaView style={estilos.container}>
+              <View style={[estilos.card, {borderWidth: 1, borderColor: '#e2e8f0'}]}>
+                <Text style={{fontWeight: '700', fontSize: 18, marginBottom: 8}}>Nova postagem</Text>
+                <Text style={{color: '#334155', marginBottom: 6}}>Título</Text>
+                <TextInput
+                  autoFocus
+                  placeholder="Título"
+                  placeholderTextColor="#6b8fa0"
+                  style={{backgroundColor: '#f8fafc', height: 48, borderRadius: 10, paddingHorizontal: 12, color: '#04334a', marginBottom: 8}}
+                  value={title}
+                  onChangeText={setTitle}
+                />
+                <Text style={{color: '#334155', marginBottom: 6}}>Texto</Text>
+                <TextInput
+                  placeholder="Texto"
+                  placeholderTextColor="#6b8fa0"
+                  style={{backgroundColor: '#f8fafc', height: 120, borderRadius: 10, paddingHorizontal: 12, textAlignVertical: 'top', color: '#04334a', marginBottom: 8}}
+                  multiline
+                  value={text}
+                  onChangeText={setText}
+                />
+                <View style={{width: '100%'}}>
+                  {/* Preview box: only URL supported (or previously-picked local uri but prefer URL) */}
+                  <View style={{width: '100%', aspectRatio: 16/9, borderRadius: 8, backgroundColor: '#f1f5f9', overflow: 'hidden', justifyContent: 'center', alignItems: 'center', marginBottom: 8}}>
+                    {imageUrl ? (
+                      <Image
+                        source={{ uri: imageUrl }}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text style={{color: '#94a3b8'}}>Pré-visualização da imagem (cole uma URL válida)</Text>
+                    )}
+                  </View>
+
+                  <Text style={{textAlign: 'center', marginBottom: 6}}>Cole o link da imagem (https://...)</Text>
+                  <TextInput placeholder="URL da imagem (opcional)" placeholderTextColor="#6b8fa0" style={{...estilos.input, backgroundColor: '#f8fafc', height: 44, borderRadius: 8, paddingHorizontal: 12}} value={imageUrl} onChangeText={setImageUrl} autoCapitalize='none' />
 
                 <TouchableOpacity onPress={handleAdd} style={{backgroundColor: '#3AA4BA', padding: 12, borderRadius: 10, marginTop: 12}} disabled={uploading}>
                   {uploading ? <ActivityIndicator color="#fff" /> : <Text style={{color: '#fff', fontWeight: '700', textAlign: 'center'}}>Publicar</Text>}
@@ -125,6 +170,7 @@ export default function Home() {
               </TouchableOpacity>
             </View>
           </SafeAreaView>
+          </KeyboardAvoidingView>
         </Modal>
       </View>
     </SafeAreaView>

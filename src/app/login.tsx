@@ -42,10 +42,10 @@ export default function login() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={{flexGrow: 1}} keyboardShouldPersistTaps="handled">
-        <SafeAreaView style={estilos.container}>
-          <Logo titulo="CONNECT" subtitulo="IMW OUTEIRO SANTO" />
+          <SafeAreaView style={estilos.container}>
+           <Logo titulo="CONNECT" subtitulo="IMW OUTEIRO SANTO" />
 
-          <View style={estilos.card}>
+           <View style={[estilos.card, {alignSelf: 'center'}]}>
             <View style={estilos.inputContainer}>
               <Image
                 style={estilos.iconeEmail}

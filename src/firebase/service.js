@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, orderBy, where, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, where, serverTimestamp, doc, deleteDoc } from 'firebase/firestore';
 import { db, storage } from './firebaseConfig';
 import { ref as storageRef, uploadBytes, getDownloadURL, uploadString } from 'firebase/storage';
 import * as FileSystem from 'expo-file-system';
@@ -54,8 +54,20 @@ async function addPost({ title, text, imageFile, imageUrl, imageUri, authorId, a
     // If imageUri is a remote URL, keep it. If it's a local uri (file:// or content://), try to upload.
     if (/^https?:\/\//i.test(imageUri)) {
       finalImageUrl = imageUri;
+    } else if (/^file:|^content:/i.test(imageUri)) {
+      // local file on device - read as base64 and upload
+      try {
+        const base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: FileSystem.EncodingType.Base64 });
+        const filename = `posts/${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        const ref = storageRef(storage, filename);
+        await uploadString(ref, base64, 'base64');
+        finalImageUrl = await getDownloadURL(ref);
+      } catch (err) {
+        // if upload fails, keep the original uri as fallback
+        finalImageUrl = imageUri;
+      }
     } else {
-      // first try fetch -> arrayBuffer -> uploadBytes
+      // try fetching as a remote resource (some platforms may expose content via a http(s) path)
       try {
         const response = await fetch(imageUri);
         if (!response.ok) throw new Error('fetch failed');
@@ -66,17 +78,8 @@ async function addPost({ title, text, imageFile, imageUrl, imageUri, authorId, a
         await uploadBytes(ref, arr);
         finalImageUrl = await getDownloadURL(ref);
       } catch (err) {
-        // fallback: try expo-file-system base64 upload
-        try {
-          const base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: FileSystem.EncodingType.Base64 });
-          const filename = `posts/${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-          const ref = storageRef(storage, filename);
-          await uploadString(ref, base64, 'base64');
-          finalImageUrl = await getDownloadURL(ref);
-        } catch (err2) {
-          // final fallback: keep original uri (may not be reachable externally)
-          finalImageUrl = imageUri;
-        }
+        // fallback: keep original uri
+        finalImageUrl = imageUri;
       }
     }
   } else if (imageUrl) {
@@ -96,4 +99,11 @@ async function getPosts() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-export { signup, login, addPost, getPosts };
+async function deletePost(postId) {
+  if (!postId) throw new Error('postId é obrigatório');
+  const ref = doc(db, 'posts', postId);
+  await deleteDoc(ref);
+  return true;
+}
+
+export { signup, login, addPost, getPosts, deletePost };

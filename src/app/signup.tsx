@@ -28,10 +28,10 @@ export default function Signup() {
 
   return (
     <SafeAreaView style={estilos.container}>
-      <ScrollView contentContainerStyle={{alignItems: 'center'}}>
+      <ScrollView contentContainerStyle={{alignItems: 'center', width: '100%'}}>
         <Logo titulo="CONNECT" subtitulo="Crie sua conta" />
 
-        <View style={estilos.card}>
+        <View style={[estilos.card, {alignSelf: 'center'}]}>
           <View style={estilos.inputContainer}>
             <TextInput
               style={estilos.input}
