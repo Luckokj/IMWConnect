@@ -1,13 +1,30 @@
-import React, {useState} from 'react';
-import { View, Text, SafeAreaView, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import React, {useState, useContext} from 'react';
+import { View, Text, SafeAreaView, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import Logo from '../components/Logo';
 import estilos from '../styles/styles';
 import Botao from '../components/Botao';
+import AuthContext from '../firebase/authContext';
+import { useRouter } from 'expo-router';
 
 export default function Signup() {
+  const { signup } = useContext(AuthContext);
+  const router = useRouter();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleCreate() {
+    try {
+      setLoading(true);
+      await signup({ nome, email, senha });
+      router.replace('/home');
+    } catch (err) {
+      Alert.alert('Erro', err.message || String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <SafeAreaView style={estilos.container}>
@@ -48,11 +65,11 @@ export default function Signup() {
             />
           </View>
 
-          <Botao titulo="Criar conta" onPress={() => { /* placeholder */ }} />
+          <Botao titulo={loading ? 'Criando...' : 'Criar conta'} onPress={handleCreate} disabled={loading} />
 
           <View style={estilos.textoContainer}>
             <Text style={estilos.bottomText}>Já tem conta?</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.replace('/login')}>
               <Text style={{color: '#1C6885'}}> Faça login</Text>
             </TouchableOpacity>
           </View>
